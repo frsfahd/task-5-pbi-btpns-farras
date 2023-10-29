@@ -1,6 +1,7 @@
 package controllers
 
 import (
+	"errors"
 	"gin-photo-api/app"
 	"gin-photo-api/database"
 	"gin-photo-api/helper"
@@ -8,6 +9,7 @@ import (
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"gorm.io/gorm"
 )
 
 func UserCreate(c *gin.Context) {
@@ -62,7 +64,9 @@ func UserLogin(c *gin.Context) {
 	result := database.DB.Where("email = ?", payload.Email).First(&user)
 
 	if result.Error != nil {
-		helper.RecordNotFoundError(result, c)
+		if errors.Is(result.Error, gorm.ErrRecordNotFound) {
+			c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "Invalid Email"})
+		}
 		return
 	}
 
@@ -81,13 +85,13 @@ func UserLogin(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("Authorization", token, 3600, "", "", false, true)
 
-	c.JSON(http.StatusOK, gin.H{"message": "success"})
+	c.JSON(http.StatusOK, gin.H{"message": "success", "data": user.ID})
 }
 
 func UserList(c *gin.Context) {
 	var users []models.User
 
-	database.DB.Select("Username", "Email").Find(&users)
+	database.DB.Omit("Photo").Find(&users)
 
 	c.IndentedJSON(http.StatusOK, gin.H{"data": users})
 }
@@ -120,7 +124,13 @@ func UserRetrive(c *gin.Context) {
 
 func UserUpdate(c *gin.Context) {
 	id := c.Param("userId")
-	var user models.User
+
+	// get current user
+	currentUser, ok := helper.ValidateCurrentUser(id, c)
+	if !ok {
+		return
+	}
+
 	payload := app.UserUpdateInput{}
 
 	c.ShouldBindJSON(&payload)
@@ -132,27 +142,23 @@ func UserUpdate(c *gin.Context) {
 		return
 	}
 
-	// check if user exist
-	result := database.DB.Where("id = ?", id).First(&user)
-	if result.Error != nil {
-		helper.RecordNotFoundError(result, c)
-		return
+	// hash password if password field not empty
+	password := payload.Password
+	if len(password) != 0 {
+		password, _ = helper.HashPassword(payload.Password)
 	}
-
-	// hash password
-	hashedPassword, _ := helper.HashPassword(payload.Password)
 
 	// update record
 	newUser := models.User{
 		UserSchema: models.UserSchema{
 			Username: payload.Username,
 			Email:    payload.Email,
-			Password: hashedPassword,
+			Password: password,
 		},
 	}
 
 	// save to DB
-	result = database.DB.Model(&user).Updates(newUser)
+	result := database.DB.Model(&currentUser).Updates(newUser)
 
 	// error handling
 	if result.Error != nil {
@@ -166,7 +172,14 @@ func UserUpdate(c *gin.Context) {
 func UserDelete(c *gin.Context) {
 	id := c.Param("userId")
 
-	result := database.DB.Delete(&models.User{}, id)
+	// get current user
+	currentUser, ok := helper.ValidateCurrentUser(id, c)
+	if !ok {
+		return
+	}
+
+	result := database.DB.Delete(&currentUser)
+
 	// error handling
 	if result.Error != nil {
 		helper.RecordNotFoundError(result, c)
