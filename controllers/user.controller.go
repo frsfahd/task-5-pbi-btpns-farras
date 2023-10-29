@@ -85,7 +85,7 @@ func UserLogin(c *gin.Context) {
 	c.SetSameSite(http.SameSiteLaxMode)
 	c.SetCookie("Authorization", token, 3600, "", "", false, true)
 
-	c.JSON(http.StatusOK, gin.H{"message": "success", "data": user.ID})
+	c.JSON(http.StatusOK, gin.H{"message": "success", "user_id": user.ID})
 }
 
 func UserList(c *gin.Context) {
