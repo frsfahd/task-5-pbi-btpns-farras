@@ -1,6 +1,6 @@
 # Photo API with Gin
 
-A simple implementation of RESTful API built with Gin framework.
+RESTful API built with [Gin](https://github.com/gin-gonic/gin) framework.
 
 Some features include :
 - Authentication  :  [golang-jwt/jwt](https://github.com/golang-jwt/jwt)
