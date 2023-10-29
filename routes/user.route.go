@@ -12,6 +12,7 @@ func addUserRoutes(rg *gin.RouterGroup) {
 	user.GET("/", controllers.UserList)
 	user.GET("/:userId", controllers.UserRetrive)
 	user.POST("/register", controllers.UserCreate)
+	user.POST("/login", controllers.UserLogin)
 	user.PUT("/:userId", controllers.UserUpdate)
 	user.DELETE("/:userId", controllers.UserDelete)
 }

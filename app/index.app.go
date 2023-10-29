@@ -16,6 +16,12 @@ func ValidateUserRegister(data UserRegisterInput) error {
 	return err
 }
 
+func ValidateUserLogin(data UserLoginInput) error {
+	err := valid.Struct(data)
+
+	return err
+}
+
 func ValidateUserUpdate(data UserUpdateInput) error {
 	err := valid.Struct(data)
 

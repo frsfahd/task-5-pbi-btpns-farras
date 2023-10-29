@@ -44,6 +44,46 @@ func UserCreate(c *gin.Context) {
 	c.IndentedJSON(http.StatusCreated, gin.H{"message": "success", "data": newUser})
 }
 
+func UserLogin(c *gin.Context) {
+	// get email and password
+	payload := app.UserLoginInput{}
+
+	c.BindJSON(&payload)
+
+	// validate incoming body request
+	err := app.ValidateUserLogin(payload)
+	if err != nil {
+		helper.ValidationError(err, c)
+		return
+	}
+
+	// look up requested user
+	var user models.User
+	result := database.DB.Where("email = ?", payload.Email).First(&user)
+
+	if result.Error != nil {
+		helper.RecordNotFoundError(result, c)
+		return
+	}
+
+	// compare sent in password with actual password
+	ok := helper.CheckPasswordHash(payload.Password, user.Password)
+
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "Invalid Password"})
+		return
+	}
+
+	// generate token
+	token := helper.GenerateToken(payload.Email)
+
+	// send token back
+	c.SetSameSite(http.SameSiteLaxMode)
+	c.SetCookie("Authorization", token, 3600, "", "", false, true)
+
+	c.JSON(http.StatusOK, gin.H{"message": "success"})
+}
+
 func UserList(c *gin.Context) {
 	var users []models.User
 
