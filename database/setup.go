@@ -19,7 +19,7 @@ func ConnectToDB() {
 
 	// dsn := fmt.Sprintf("host=%s user=%s password=%s dbname=%s port=%d sslmode=disable", host, user, pass, db, port)
 	dsn := "postgres://vaplgfdx:I_pJSa2fh-3Tvu-257LLEVJZhhtSjxdd@satao.db.elephantsql.com/vaplgfdx"
-	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{})
+	DB, err = gorm.Open(postgres.Open(dsn), &gorm.Config{TranslateError: true})
 
 	if err != nil {
 		log.Fatal("Failed to connect to database")
