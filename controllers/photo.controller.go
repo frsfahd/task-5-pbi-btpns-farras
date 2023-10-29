@@ -6,13 +6,17 @@ import (
 	"gin-photo-api/helper"
 	"gin-photo-api/models"
 	"net/http"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
 )
 
 func PhotoCreate(c *gin.Context) {
 	payload := app.PhotoCreateInput{}
-	var user models.User
+
+	// get current user
+	user, _ := c.Get("user")
+	currentUser, _ := user.(models.User)
 
 	c.ShouldBindJSON(&payload)
 
@@ -24,11 +28,11 @@ func PhotoCreate(c *gin.Context) {
 	}
 
 	//check the respective user
-	result := database.DB.Where("email = ?", payload.UserEmail).First(&user)
-	if result.Error != nil {
-		helper.RecordNotFoundError(result, c)
-		return
-	}
+	// result := database.DB.Where("email = ?", payload.UserEmail).First(&user)
+	// if result.Error != nil {
+	// 	helper.RecordNotFoundError(result, c)
+	// 	return
+	// }
 
 	//insert to DB
 	newPhoto := models.Photo{
@@ -37,12 +41,12 @@ func PhotoCreate(c *gin.Context) {
 			Caption:  payload.Caption,
 			PhotoURL: payload.PhotoURL,
 		},
-		UserID: user.ID,
+		UserID: currentUser.ID,
 	}
-	result = database.DB.Create(&newPhoto)
+	result := database.DB.Create(&newPhoto)
 
 	if result.Error != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Server Error"})
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Internal Server Error"})
 		return
 	}
 
@@ -104,6 +108,13 @@ func PhotoUpdate(c *gin.Context) {
 		return
 	}
 
+	// get current user
+	id = strconv.FormatUint(uint64(photo.UserID), 10)
+	_, ok := helper.ValidateCurrentUser(id, c)
+	if !ok {
+		return
+	}
+
 	// update record
 	newPhoto := models.Photo{
 		PhotoSchema: models.PhotoSchema{
@@ -126,11 +137,27 @@ func PhotoUpdate(c *gin.Context) {
 func PhotoDelete(c *gin.Context) {
 	id := c.Param("photoId")
 
-	result := database.DB.Delete(&models.Photo{}, id)
+	var photo models.Photo
+	result := database.DB.Where("id = ?", id).First(&photo)
 	// error handling
 	if result.Error != nil {
 		helper.RecordNotFoundError(result, c)
 		return
 	}
+
+	// validate auth
+	id = strconv.FormatUint(uint64(photo.UserID), 10)
+	_, ok := helper.ValidateCurrentUser(id, c)
+	if !ok {
+		return
+	}
+
+	result = database.DB.Delete(&photo)
+	// error handling
+	if result.Error != nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"message": "Internal Server Error"})
+		return
+	}
+
 	c.IndentedJSON(http.StatusOK, gin.H{"message": "Record Deleted"})
 }
