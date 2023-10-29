@@ -29,3 +29,15 @@ func RecordNotFoundError(result *gorm.DB, c *gin.Context) {
 	}
 
 }
+
+func DuplicateUserError(result *gorm.DB, c *gin.Context) {
+	if errors.Is(result.Error, gorm.ErrDuplicatedKey) {
+		// Duplicate Record
+		// Handle this case
+		c.IndentedJSON(http.StatusConflict, gin.H{"message": "(Duplicate Record) Email Already Used"})
+	} else {
+		// Other error occurred
+		// Handle the error
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Internal Server Error"})
+	}
+}

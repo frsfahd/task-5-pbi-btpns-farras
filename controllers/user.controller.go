@@ -35,8 +35,10 @@ func UserCreate(c *gin.Context) {
 
 	result := database.DB.Create(&newUser)
 
+	// error handling
 	if result.Error != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "server error"})
+		helper.DuplicateUserError(result, c)
+		return
 	}
 
 	c.IndentedJSON(http.StatusCreated, gin.H{"message": "success", "data": newUser})
@@ -111,8 +113,10 @@ func UserUpdate(c *gin.Context) {
 
 	// save to DB
 	result = database.DB.Model(&user).Updates(newUser)
+
+	// error handling
 	if result.Error != nil {
-		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Internal Server Error"})
+		helper.DuplicateUserError(result, c)
 		return
 	}
 
